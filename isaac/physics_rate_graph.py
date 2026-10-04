@@ -6,11 +6,13 @@ Run with the Franka ROS 2 scene loaded and the simulation stopped.
     controller drives the arm.
   * New graph on the physics step:
       publishes /isaac_joint_states_fast, stamped with wall-clock time
+      publishes /isaac_ee_tf (panda_link0 -> panda_hand), same stamp
       applies /isaac_joint_commands to the arm
 """
 
 import omni.graph.core as og
 import omni.usd
+import usdrt
 from pxr import PhysxSchema, UsdPhysics
 
 PHYSICS_HZ = 120
@@ -28,6 +30,13 @@ for g in og.get_all_graphs():
             n.get_attribute("inputs:robotPath").set("")
             print("disabled old controller:", n.get_prim_path())
 
+def find(name):
+    return next(p.GetPath() for p in stage.Traverse() if p.GetName() == name)
+
+
+base, hand = find("panda_link0"), find("panda_hand")
+print("base:", base, "| hand:", hand)
+
 if stage.GetPrimAtPath(GRAPH):
     stage.RemovePrim(GRAPH)
 keys = og.Controller.Keys
@@ -42,11 +51,15 @@ og.Controller.edit(
             ("pub", "isaacsim.ros2.bridge.ROS2PublishJointState"),
             ("sub", "isaacsim.ros2.bridge.ROS2SubscribeJointState"),
             ("ctrl", "isaacsim.core.nodes.IsaacArticulationController"),
+            ("ee_tf", "isaacsim.ros2.bridge.ROS2PublishTransformTree"),
         ],
         keys.CONNECT: [
             ("step.outputs:step", "pub.inputs:execIn"),
             ("step.outputs:step", "sub.inputs:execIn"),
             ("step.outputs:step", "ctrl.inputs:execIn"),
+            ("step.outputs:step", "ee_tf.inputs:execIn"),
+            ("ctx.outputs:context", "ee_tf.inputs:context"),
+            ("wall.outputs:systemTime", "ee_tf.inputs:timeStamp"),
             ("ctx.outputs:context", "pub.inputs:context"),
             ("ctx.outputs:context", "sub.inputs:context"),
             ("wall.outputs:systemTime", "pub.inputs:timeStamp"),
@@ -60,6 +73,9 @@ og.Controller.edit(
             ("pub.inputs:targetPrim", str(robot.GetPath())),
             ("sub.inputs:topicName", "isaac_joint_commands"),
             ("ctrl.inputs:robotPath", str(robot.GetPath())),
+            ("ee_tf.inputs:topicName", "isaac_ee_tf"),
+            ("ee_tf.inputs:parentPrim", [usdrt.Sdf.Path(str(base))]),
+            ("ee_tf.inputs:targetPrims", [usdrt.Sdf.Path(str(hand))]),
         ],
     },
 )

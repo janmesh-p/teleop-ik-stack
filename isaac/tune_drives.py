@@ -15,7 +15,7 @@ import math
 import omni.usd
 from pxr import UsdPhysics
 
-FACTOR = 10.0
+FACTOR = 1.0
 
 stage = omni.usd.get_context().get_stage()
 joints = sorted(

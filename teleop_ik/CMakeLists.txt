@@ -15,7 +15,7 @@ find_package(tf2_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-add_library(teleop_ik_core src/franka_kinematics.cpp src/dls_ik.cpp)
+add_library(teleop_ik_core src/franka_kinematics.cpp src/dls_ik.cpp src/safety_supervisor.cpp)
 target_include_directories(teleop_ik_core PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_link_libraries(teleop_ik_core Eigen3::Eigen)
@@ -36,6 +36,8 @@ if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(test_ik test/test_ik.cpp)
   target_link_libraries(test_ik teleop_ik_core)
+  ament_add_gtest(test_safety test/test_safety.cpp)
+  target_link_libraries(test_safety teleop_ik_core)
 endif()
 
 ament_package()
